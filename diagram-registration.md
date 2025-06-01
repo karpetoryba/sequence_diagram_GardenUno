@@ -6,28 +6,36 @@ sequenceDiagram
     participant Database
 
     User->>Frontend: openApplication()
+    activate User
+    activate Frontend
     Frontend->>User: showCountrySelector()
-    User->>Frontend: selectCountry()
-    Frontend->>Backend: verifyCountry(country)
-    Backend->>Database: isCountryAllowed(country)
-    Database-->>Backend: yes/no
-    Backend-->>Frontend: countryStatus()
+    deactivate User
+    deactivate Frontend
 
-    alt Country is allowed
-        Frontend->>User: showLanguageSelector()
-        User->>Frontend: selectLanguage()
-        Frontend->>Backend: saveLanguagePreference(lang)
-        Backend->>Database: storeLanguagePreference(userId, lang)
-        Database-->>Backend: ok
-        Backend-->>Frontend: ok
-        Frontend->>User: showRegistrationMethodChoice()
-    else Country not supported
-        Frontend->>User: showError("Country not supported")
-        User->>Frontend: exit()
-    end
+    User->>Frontend: selectCountry()
+    activate Frontend
+
+    Frontend->>Backend: [HTTP POST] /api/verify-country\nBody: { country }
+    activate Backend
+    deactivate Frontend
+
+    Backend->>Database: isCountryAllowed(country)
+    activate Database
+    Database-->>Backend: true / false
+    deactivate Database
+
+    Backend-->>Frontend: [HTTP 200 OK]\nBody: { allowed: true, locale: "fr" }
+    deactivate Backend
+
+    activate Frontend
+    Frontend->>Frontend: changeLanguage("fr")
+    Frontend-->>User: showResultInLanguage("Bienvenue", ...)
+    deactivate Frontend
+
 
     alt User chooses Email
         User->>Frontend: selectEmailMethod()
+
         Frontend->>User: showMailForm()
         User->>Frontend: fillMailForm()
         Frontend->>Backend: validateEmail(email)
