@@ -11,15 +11,17 @@ sequenceDiagram
   activate User
   activate Frontend
   Frontend->>User: showCountrySelector()
-  deactivate User
+
   deactivate Frontend
 
   %% Country Selection
   User->>Frontend: selectCountry()
   activate Frontend
+  deactivate User
 
   %% Send API Request to Backend
   Frontend->>Backend: [HTTP POST] /api/verify-country\nBody: { country }
+  deactivate Frontend
   activate Backend
 
   %% Query the Database
@@ -106,17 +108,24 @@ sequenceDiagram
             activate Database
             Database-->>Backend: captchaValid / captchaInvalid
             deactivate Database
-            deactivate Backend
+
 
             %% Return captcha validation status to frontend
             Backend-->>Frontend: [HTTP 200 OK]\nBody: { captchaStatus: "valid" | "invalid" }
-
+            deactivate Backend
+            activate Frontend
              Frontend-->>User: showCaptchaResult("Valid" or "Invalid")
              deactivate Frontend
 
+
+
             alt CAPTCHA invalid
+
                 Frontend->>User: showError("CAPTCHA failed")
+                activate Frontend
                 Frontend->>User: showMailFormAgain()
+                deactivate Frontend
+
             else CAPTCHA valid
                 Backend->>Database: checkUserExists(email)
                 Database-->>Backend: userExists: true/false
@@ -149,25 +158,6 @@ sequenceDiagram
             end
         end
 
-    else User chooses Google
-        User->>Frontend: selectGoogleMethod()
-        Frontend->>Backend: signupWithGoogle(token)
-        Backend->>Database: validateGoogleToken(token)
-        Database-->>Backend: valid/invalid
-        Backend-->>Frontend: tokenValidationResult()
-
-        alt Google token invalid
-            Backend-->>Frontend: registrationFailed("Google signup failed")
-            Frontend->>User: showError("Google signup failed")
-            Frontend->>User: showRegistrationMethodChoiceAgain()
-        else Google token valid
-            Backend->>Database: createOrUpdateUser(googleData)
-            Database-->>Backend: userCreated/updated
-            Backend-->>Frontend: registrationSuccess()
-            Frontend->>User: showSuccess()
-        end
-    end
-
-    User->>Frontend: loginToApplication()
+end
 
 ```
