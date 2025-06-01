@@ -1,4 +1,5 @@
 ```mermaid
+
 sequenceDiagram
   actor User
   participant Frontend
@@ -39,6 +40,7 @@ sequenceDiagram
 
 
     alt User chooses Email
+    %% Email method selection
         User->>Frontend: selectEmailMethod()
         activate User
         activate Frontend
@@ -46,13 +48,17 @@ sequenceDiagram
         deactivate User
         deactivate Frontend
 
+     %% Filling and submitting email form
         User->>Frontend: fillMailForm()
         activate Frontend
-        Frontend->>Backend: validateEmail(email)
+
+    %% Send request to backend
+        Frontend->>Backend: [HTTP POST] /api/verify-email\nBody: { email }
         activate Backend
         deactivate Frontend
 
-        Backend->>Database: checkEmailCredibility(email)
+    %% Query database for email credibility
+         Backend->>Database: checkEmailCredibility(email)
         deactivate Backend
         activate Database
 
@@ -60,8 +66,14 @@ sequenceDiagram
         deactivate Database
         activate Backend
 
-        Backend-->>Frontend: emailStatus()
-        deactivate Backend
+    %% Return result to frontend
+        Backend-->>Frontend: [HTTP 200 OK]\nBody: { status: "valid" | "invalid" }
+  deactivate Backend
+
+ %% Show result to user
+      activate Frontend
+      Frontend-->>User: showEmailStatus("Valid" or "Invalid")
+      deactivate Frontend
 
         alt Email is invalid
 
@@ -75,24 +87,32 @@ sequenceDiagram
 
         else Email is valid
 
+%% Show captcha form
             Frontend->>User: showCaptcha()
             activate Frontend
             activate User
 
+%% User solves captcha
             User->>Frontend: solveCaptcha()
             deactivate User
 
-            Frontend->>Backend: captchaValidation(response)
+            %% Send captcha response to backend
+            Frontend->>Backend: [HTTP POST] /api/validate-captcha\nBody: { response }
             activate Backend
             deactivate Frontend
 
+            %% Backend validates captcha via DB or service
             Backend->>Database: verifyCaptcha(response)
             activate Database
-            Database-->>Backend: captchaValid/captchaInvalid
+            Database-->>Backend: captchaValid / captchaInvalid
             deactivate Database
             deactivate Backend
 
-            Backend-->>Frontend: captchaStatus()
+            %% Return captcha validation status to frontend
+            Backend-->>Frontend: [HTTP 200 OK]\nBody: { captchaStatus: "valid" | "invalid" }
+
+             Frontend-->>User: showCaptchaResult("Valid" or "Invalid")
+             deactivate Frontend
 
             alt CAPTCHA invalid
                 Frontend->>User: showError("CAPTCHA failed")
