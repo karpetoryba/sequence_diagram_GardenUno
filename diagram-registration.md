@@ -1,57 +1,97 @@
 ```mermaid
 sequenceDiagram
-    actor User
-    participant Frontend
-    participant Backend
-    participant Database
+  actor User
+  participant Frontend
+  participant Backend
+  participant Database
 
-    User->>Frontend: openApplication()
-    activate User
-    activate Frontend
-    Frontend->>User: showCountrySelector()
-    deactivate User
-    deactivate Frontend
+  %% Application Launch
+  User->>Frontend: openApplication()
+  activate User
+  activate Frontend
+  Frontend->>User: showCountrySelector()
+  deactivate User
+  deactivate Frontend
 
-    User->>Frontend: selectCountry()
-    activate Frontend
+  %% Country Selection
+  User->>Frontend: selectCountry()
+  activate Frontend
 
-    Frontend->>Backend: [HTTP POST] /api/verify-country\nBody: { country }
-    activate Backend
-    deactivate Frontend
+  %% Send API Request to Backend
+  Frontend->>Backend: [HTTP POST] /api/verify-country\nBody: { country }
+  activate Backend
 
-    Backend->>Database: isCountryAllowed(country)
-    activate Database
-    Database-->>Backend: true / false
-    deactivate Database
+  %% Query the Database
+  Backend->>Database: isCountryAllowed(country)
+  activate Database
+  Database-->>Backend: true / false
+  deactivate Database
 
-    Backend-->>Frontend: [HTTP 200 OK]\nBody: { allowed: true, locale: "fr" }
-    deactivate Backend
+  %% Backend Response
+  Backend-->>Frontend: [HTTP 200 OK]\nBody: { allowed: true, locale: "fr" }
+  deactivate Backend
 
-    activate Frontend
-    Frontend->>Frontend: changeLanguage("fr")
-    Frontend-->>User: showResultInLanguage("Bienvenue", ...)
-    deactivate Frontend
+  %% Frontend Handling
+  activate Frontend
+  Frontend->>Frontend: changeLanguage("fr")
+  Frontend-->>User: showResultInLanguage("Bienvenue", ...)
+  deactivate Frontend
 
 
     alt User chooses Email
         User->>Frontend: selectEmailMethod()
-
+        activate User
+        activate Frontend
         Frontend->>User: showMailForm()
+        deactivate User
+        deactivate Frontend
+
         User->>Frontend: fillMailForm()
+        activate Frontend
         Frontend->>Backend: validateEmail(email)
+        activate Backend
+        deactivate Frontend
+
         Backend->>Database: checkEmailCredibility(email)
+        deactivate Backend
+        activate Database
+
         Database-->>Backend: valid/invalid
+        deactivate Database
+        activate Backend
+
         Backend-->>Frontend: emailStatus()
+        deactivate Backend
 
         alt Email is invalid
+
             Frontend->>User: showValidationError("Invalid email")
+            activate Frontend
+            activate User
+
             Frontend->>User: showMailFormAgain()
+            deactivate Frontend
+            deactivate User
+
         else Email is valid
+
             Frontend->>User: showCaptcha()
+            activate Frontend
+            activate User
+
             User->>Frontend: solveCaptcha()
+            deactivate User
+
             Frontend->>Backend: captchaValidation(response)
+            activate Backend
+            deactivate Frontend
+
             Backend->>Database: verifyCaptcha(response)
+            activate Database
             Database-->>Backend: captchaValid/captchaInvalid
+            deactivate Database
+            deactivate Backend
+
             Backend-->>Frontend: captchaStatus()
 
             alt CAPTCHA invalid
