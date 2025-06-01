@@ -127,33 +127,75 @@ sequenceDiagram
                 deactivate Frontend
 
             else CAPTCHA valid
-                Backend->>Database: checkUserExists(email)
-                Database-->>Backend: userExists: true/false
+                 activate Frontend
+                 Frontend->>Backend: GET /api/users/exists?email=email
+                 deactivate Frontend
+                 activate Backend
+                 Backend->>Database: SELECT * FROM users WHERE email=email
+                 activate Database
+                 Database-->>Backend: { userExists: true/false }
 
                 alt User exists
-                    Backend->>Database: createLoginCode(email)
-                    Database-->>Backend: codeGenerated
+                Backend->>Database: INSERT INTO login_codes ...
+                Database-->>Backend: { codeGenerated }
                 else User does not exist
-                    Backend->>Database: createRegistrationCode(email)
-                    Database-->>Backend: codeGenerated
-                end
+                Backend->>Database: INSERT INTO registration_codes ...
+                Database-->>Backend: { codeGenerated }
+             end
+                deactivate Database
 
-                Backend-->>Frontend: promptForCode()
+                Backend-->>Frontend: 200 OK { message: "Enter verification code" }
+                deactivate Backend
+
+                activate Frontend
                 Frontend->>User: enterVerificationCode()
+
+                activate User
                 User->>Frontend: submitCode()
-                Frontend->>Backend: verifyCode(code)
-                Backend->>Database: checkCode(code)
-                Database-->>Backend: valid/expired/incorrect
-                Backend-->>Frontend: codeStatus()
+                deactivate User
+
+                Frontend->>Backend: POST /api/auth/check-code { code }
+                activate Backend
+                deactivate Frontend
+
+                Backend->>Database: SELECT * FROM verification_codes WHERE code=...
+                activate Database
+                Database-->>Backend: { status: valid/expired/incorrect }
+                deactivate Database
+
+                Backend-->>Frontend: { codeStatus }
+                deactivate Backend
+
+
 
                 alt Code expired or incorrect
+                    Backend-->>Frontend: 400 Bad Request { error: "Invalid or expired code" }
+                    activate Frontend
+                    activate Backend
                     Frontend->>User: showError("Invalid or expired code")
+                    deactivate Backend
                     Frontend->>User: offerRetryOrChangeMethod()
+
+
+
                 else Code is valid
-                    Backend->>Database: activateUser(email)
-                    Database-->>Backend: userActivated
-                    Backend->>Frontend: sendWelcomeMail("Bienvenue")
+                     Backend-->>Frontend: 200 OK { message: "Code valid" }
+                     activate Backend
+                     deactivate Frontend
+                    Frontend->>Backend: PUT /api/users/activate { email }
+                    deactivate Backend
+                    activate Frontend
+                    activate Backend
+                    Backend->>Database: UPDATE users SET active = true WHERE email=email
+                    deactivate Frontend
+                    activate Database
+                    Database-->>Backend: { userActivated: true }
+                    deactivate Database
+                    Backend-->>Frontend: 200 OK { message: "User activated. Welcome mail sent." }
+                    activate Frontend
+                    deactivate Backend
                     Frontend->>User: showSuccess()
+                    deactivate Frontend
                 end
             end
         end
