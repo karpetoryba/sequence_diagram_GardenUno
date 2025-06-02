@@ -10,10 +10,21 @@ sequenceDiagram
   User->>Frontend: openApplication()
   activate User
   activate Frontend
-  Frontend->>User: showCountrySelector()
+
+   %% Check session
+  Frontend->>Backend: [HTTP GET] /api/session
+  Backend->>Database: SELECT * FROM sessions WHERE session_id = "..." AND expires_at > NOW()
+  activate Database
+  Database-->>Backend: { active: true/false, user: {...} }
+  Backend-->>Frontend: [HTTP 200 OK] { active: true/false, user: {...} }
+
+  alt Session is active
+    Frontend->>User: showAppDashboard(user)
+  else Session is not active
+    Frontend->>User: showCountrySelector()
+  end
 
   deactivate Frontend
-
   %% Country Selection
   User->>Frontend: selectCountry()
   activate Frontend
