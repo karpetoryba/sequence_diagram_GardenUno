@@ -112,18 +112,46 @@ sequenceDiagram
       Backend-->>Frontend: 200 OK { message: "Code valid" }
       deactivate Backend
       activate Frontend
-      Frontend->>Backend: PUT /api/users/activate { email }
+      Frontend->>Backend: POST /api/auth/verify-user { email }
       activate Backend
       deactivate Frontend
-      Backend->>Database: UPDATE users SET active = true WHERE email=email
+
+      Backend->>Database: SELECT * FROM users WHERE email = email
       activate Database
-      Database-->>Backend: { userActivated: true }
+      Database-->>Backend: { userExists: true/false, userData: {...} }
       deactivate Database
-      Backend-->>Frontend: 200 OK { message: "User activated. Welcome mail sent." }
-      activate Frontend
-      deactivate Backend
-      Frontend->>User: showSuccess()
-      deactivate Frontend
+
+      alt User exists (Login)
+        Backend->>Database: INSERT INTO sessions (user_id, session_token, expires_at)
+        activate Database
+        Database-->>Backend: { sessionCreated: true, sessionToken: "..." }
+        deactivate Database
+
+        Backend-->>Frontend: 200 OK { message: "Login successful", sessionToken: "...", user: {...} }
+        activate Frontend
+        deactivate Backend
+        Frontend->>Frontend: saveSessionToken()
+        Frontend->>User: showAppDashboard(user)
+        deactivate Frontend
+
+      else User does not exist (Registration)
+        Backend->>Database: INSERT INTO users (email, active, created_at) VALUES (email, true, NOW())
+
+        Database-->>Backend: { userCreated: true, userId: "..." }з
+
+        Backend->>Database: INSERT INTO sessions (user_id, session_token, expires_at)
+        Database-->>Backend: { sessionCreated: true, sessionToken: "..." }
+
+
+        Backend->>Backend: sendWelcomeEmail(email)
+        Backend-->>Frontend: 200 OK { message: "Registration successful", sessionToken: "...", user: {...} }
+
+        Frontend->>Frontend: saveSessionToken()
+        Frontend->>User: showWelcomeMessage()
+        Frontend->>User: showAppDashboard(user)
+
+      end
+
     end
   end
 
